@@ -5,15 +5,16 @@ import matplotlib
 matplotlib.use('qt5agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+import process_image as pi
 
 def pipeline(img, s_thresh=(100, 255), sx_thresh=(12, 255), sy_thresh=(25, 255), v_thresh=(50, 255)):
     img = np.copy(img)
     # Convert to HSV color space and separate the V channel
-    hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS).astype(np.float)
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(np.float)
+    hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     l_channel = hls[:, :, 1]
-    s_channel = hls[:, :, 2]
-    v_channel = hsv[:, :, 2]
+    s_channel = np.uint8(hsv[...,1] * 255)
+    v_channel = np.uint8(hsv[...,2] * 255)
     # Sobel x
     sobelx = cv2.Sobel(l_channel, cv2.CV_64F, 1, 0)  # Take the derivative in x
     abs_sobelx = np.absolute(sobelx)  # Absolute x derivative to accentuate lines away from horizontal
@@ -38,6 +39,7 @@ def pipeline(img, s_thresh=(100, 255), sx_thresh=(12, 255), sy_thresh=(25, 255),
     # Threshold V channel
     v_binary = np.zeros_like(v_channel)
     v_binary[(v_channel >= v_thresh[0]) & (v_channel <= v_thresh[1])] = 1
+    v_binary = 1 - v_binary
 
     # Stack each channel
     # Note color_binary[:, :, 0] is all 0s, effectively an all black image. It might
@@ -46,7 +48,7 @@ def pipeline(img, s_thresh=(100, 255), sx_thresh=(12, 255), sy_thresh=(25, 255),
     c_binary = np.zeros_like(v_channel)
     c_binary[(s_binary == 1) & (v_binary == 1)] = 1
     color_binary = np.zeros_like(img[:, :, 0])
-    color_binary[((sxbinary == 1) & (sybinary == 1)) | (c_binary == 1)] = 255
+    color_binary[((sxbinary == 1) & (sybinary == 1)) | ((s_binary == 1) & (v_binary == 1))] = 1
     return color_binary
 
 
@@ -66,6 +68,8 @@ if __name__ == '__main__':
 
     # Colour and gradient transform
     result = pipeline(undist)
+    #print(result)
+    #result = cv2.cvtColor(pipeline(undist).astype(np.uint8), cv2.COLOR_HSV2RGB)
 
     # Plot the result
     f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(24, 9))
@@ -74,12 +78,12 @@ if __name__ == '__main__':
     ax1.imshow(img)
     ax1.set_title('Original Image', fontsize=40)
 
-    ax2.imshow(result)
+    #ax2.imshow(result, cmap="gray") # display as grayscale
+    ax2.imshow(result, cmap = 'binary_r')
     ax2.set_title('Pipeline Result', fontsize=40)
 
     # Warp the image
     img_size = (img.shape[1], img.shape[0])
-    print(img_size)
     source = np.float32([[592, 451],
                          [230, 701],
                          [1078, 701],
@@ -90,9 +94,10 @@ if __name__ == '__main__':
                        [960, 720],
                        [960, 0]])
     M = cv2.getPerspectiveTransform(source, dest)
-    warped = cv2.warpPerspective(result, M, img_size, flags=cv2.INTER_LINEAR)
+    #warped = cv2.warpPerspective(result, M, img_size, flags=cv2.INTER_LINEAR)
+    warped = pi.warp_image(result)
 
-    ax3.imshow(warped)
+    ax3.imshow(warped, cmap = 'binary_r')
     ax3.set_title('Warped', fontsize=40)
     plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
     plt.show()
