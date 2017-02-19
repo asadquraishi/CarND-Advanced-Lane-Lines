@@ -14,7 +14,7 @@ if __name__ == '__main__':
     dist = dist_pickle["dist"]
 
     # Read in an image
-    image_file = 'test_images/test4.jpg'
+    image_file = 'test_images/test5.jpg'
     img = cv2.imread(image_file)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -22,8 +22,7 @@ if __name__ == '__main__':
     undist = cv2.undistort(img, mtx, dist, None, mtx)
 
     # Colour and gradient transform
-    #result = pi.pipeline(undist, sx_thresh=(12, 255), sy_thresh=(25, 255), s_thresh=(70, 200), v_thresh=(25, 150)) # started with v=50,255 not bad
-    result = pi.pipeline(undist, sx_thresh=(12, 255), sy_thresh=(25, 255), s_thresh=(70, 200), v_thresh=(25, 150))
+    result = pi.pipeline(undist, sx_thresh=(12, 255), sy_thresh=(25, 255), s_thresh=(100, 255), v_thresh=(50, 255))
 
     # Plot the result
     f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(24, 9))
@@ -37,6 +36,7 @@ if __name__ == '__main__':
     ax2.set_title('Pipeline Result', fontsize=40)
 
     warped = pi.warp_image(result)
+    print("white {}, black {}".format(warped[596,304], warped[609,169]))
 
     ax3.imshow(warped, cmap = 'binary_r')
     ax3.set_title('Warped', fontsize=40)

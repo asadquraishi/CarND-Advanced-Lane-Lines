@@ -20,11 +20,11 @@ def warp_image(img):
 def pipeline(img, sx_thresh=(0, 255), sy_thresh=(0, 255), s_thresh=(0, 255), v_thresh=(0, 255)):
     img = np.copy(img)
     # Convert to HSV color space and separate the V channel
-    hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS).astype(np.float)
+    hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV).astype(np.float)
     l_channel = hls[:, :, 1]
-    s_channel = np.uint8(hsv[...,1] * 255)
-    v_channel = np.uint8(hsv[...,2] * 255)
+    s_channel = hls[:, :, 2]
+    v_channel = hsv[:, :, 2]
     # Sobel x
     sobelx = cv2.Sobel(l_channel, cv2.CV_64F, 1, 0)  # Take the derivative in x
     abs_sobelx = np.absolute(sobelx)  # Absolute x derivative to accentuate lines away from horizontal
@@ -49,15 +49,10 @@ def pipeline(img, sx_thresh=(0, 255), sy_thresh=(0, 255), s_thresh=(0, 255), v_t
     # Threshold V channel
     v_binary = np.zeros_like(v_channel)
     v_binary[(v_channel >= v_thresh[0]) & (v_channel <= v_thresh[1])] = 1
-    v_binary = 1 - v_binary
 
-    # Stack each channel
-    # Note color_binary[:, :, 0] is all 0s, effectively an all black image. It might
-    # be beneficial to replace this channel with something else.
-    # color_binary = np.dstack(( np.zeros_like(sxbinary), sxbinary, v_binary))
+    # Combine channels
     c_binary = np.zeros_like(v_channel)
     c_binary[(s_binary == 1) & (v_binary == 1)] = 1
     color_binary = np.zeros_like(img[:, :, 0])
-    #color_binary[((sxbinary == 1) & (sybinary == 1)) | ((s_binary == 1) & (v_binary == 1))] = 1
-    color_binary[((sxbinary == 1) & (sybinary == 1))] = 1
+    color_binary[((sxbinary == 1) & (sybinary == 1)) | (c_binary == 1)] = 1
     return color_binary
