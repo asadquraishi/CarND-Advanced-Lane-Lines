@@ -35,8 +35,7 @@ def process_video(img):
     window_centroids = pi.find_window_centroids(binary_warped, window_width, window_height, margin)
 
     # Extract left and right line pixel positions
-    num_cen = len(window_centroids)
-    lefty = [window_height * (n) for n in np.arange(num_cen, 0, -1)]
+    lefty = [window_height * (n) for n in np.arange(len(window_centroids), 0, -1)]
     leftx = [x[0] for x in window_centroids]
     rightx = [x[1] for x in window_centroids]
     righty = lefty
@@ -67,9 +66,15 @@ def process_video(img):
     xm_per_pix = 3.7 / 648  # meters per pixel in x dimension
 
     # calculate centre and offset
-    lane_centre = leftx[num_cen - 1] + (rightx[num_cen - 1] - leftx[num_cen - 1]) / 2
+    lane_centre = left_fitx[binary_warped.shape[0] - 1] + (right_fitx[binary_warped.shape[0] - 1] - left_fitx[
+        binary_warped.shape[0] - 1]) / 2
     car_pos = img.shape[1] / 2
     dist_from_centre = (car_pos - lane_centre) * xm_per_pix
+    position = 'left of'
+    if dist_from_centre > 0:
+        position = 'right of'
+    elif dist_from_centre == 0:
+        position = 'and on'
 
     # Fit new polynomials to x,y in world space
     left_fit_cr = np.polyfit(np.asarray(lefty) * ym_per_pix, np.asarray(leftx) * xm_per_pix, 2)
@@ -87,11 +92,11 @@ def process_video(img):
     # Combine the result with the original image
     result = cv2.addWeighted(undist, 1, newwarp, 0.3, 0)
     font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(result, 'Left lane curvature in meters: {}'.format(trunc(left_curverad)), (50, 50), font, 0.5, (200, 255, 155), 1, cv2.LINE_AA)
-    cv2.putText(result, 'Right lane curvature in meters: {}'.format(trunc(right_curverad)), (50, 75), font, 0.5, (200, 255, 155), 1,
+    cv2.putText(result, 'Left lane curvature in meters: {}'.format(trunc(left_curverad)), (50, 50), font, 0.75, (200, 255, 155), 2, cv2.LINE_AA)
+    cv2.putText(result, 'Right lane curvature in meters: {}'.format(trunc(right_curverad)), (50, 80), font, 0.75, (200, 255, 155), 2,
                 cv2.LINE_AA)
-    cv2.putText(result, 'Car\'s distance from centre: {}'.format(trunc(dist_from_centre)), (50, 100), font, 0.5,
-                (200, 255, 155), 1,
+    cv2.putText(result, 'The car is {:.3f} meters {} centre.'.format(abs(dist_from_centre), position), (50, 110), font, 0.75,
+                (200, 255, 155), 2,
                 cv2.LINE_AA)
     return result
 

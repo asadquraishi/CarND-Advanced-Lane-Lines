@@ -89,6 +89,16 @@ if __name__ == '__main__':
     #ym_per_pix = 30 / 720  # meters per pixel in y dimension
     #xm_per_pix = 3.7 / 700  # meters per pixel in x dimension
 
+    # calculate centre and offset
+    lane_centre = left_fitx[binary_warped.shape[0]-1] + (right_fitx[binary_warped.shape[0]-1] - left_fitx[binary_warped.shape[0]-1]) / 2
+    car_pos = img.shape[1] / 2
+    dist_from_centre = (car_pos - lane_centre) * xm_per_pix
+    position = 'left of'
+    if dist_from_centre > 0:
+        position = 'right of'
+    elif dist_from_centre == 0:
+        position = 'and on'
+
     # Fit new polynomials to x,y in world space
     left_fit_cr = np.polyfit(np.asarray(lefty) * ym_per_pix, np.asarray(leftx) * xm_per_pix, 2)
     right_fit_cr = np.polyfit(np.asarray(righty) * ym_per_pix, np.asarray(rightx) * xm_per_pix, 2)
@@ -99,12 +109,6 @@ if __name__ == '__main__':
     right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
         2 * right_fit_cr[0])
     # Now our radius of curvature is in meters
-    print(left_curverad, 'm', right_curverad, 'm')
-
-    '''plt.plot(left_fitx, ploty, color='red', linewidth=2)
-    plt.plot(right_fitx, ploty, color='red', linewidth=2)
-    plt.xlim(0, 1280)
-    plt.ylim(720, 0)'''
 
     # Create an image to draw the lines on
     warp_zero = np.zeros_like(binary_warped).astype(np.uint8)
@@ -127,6 +131,9 @@ if __name__ == '__main__':
     cv2.putText(result, 'Left lane curvature in meters: {}'.format(trunc(left_curverad)), (50, 50), font, 0.5, (200, 255, 155),
                 1, cv2.LINE_AA)
     cv2.putText(result, 'Right lane curvature in meters: {}'.format(trunc(right_curverad)), (50, 75), font, 0.5,
+                (200, 255, 155), 1,
+                cv2.LINE_AA)
+    cv2.putText(result, 'The car is {:.3f} meters {} centre.'.format(abs(dist_from_centre),position), (50, 100), font, 0.5,
                 (200, 255, 155), 1,
                 cv2.LINE_AA)
     plt.imshow(result)
