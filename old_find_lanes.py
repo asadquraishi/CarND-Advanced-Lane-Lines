@@ -31,31 +31,15 @@ def process_video(img):
     Minv, binary_warped = pi.warp_image(binary)
 
     # pi.plot_pipeline(img, binary, binary_warped)
-    if not left_lane.detected or not right_lane.detected:
-        window_centroids = pi.find_window_centroids(binary_warped, window_width, window_height, margin)
-        # Extract left and right line pixel positions
-        num_cen = len(window_centroids)
-        lefty = [window_height * (n) for n in np.arange(num_cen, 0, -1)]
-        leftx = [x[0] for x in window_centroids]
-        rightx = [x[1] for x in window_centroids]
-        righty = lefty
-    else:
-        nonzero = binary_warped.nonzero()
-        nonzeroy = np.array(nonzero[0])
-        nonzerox = np.array(nonzero[1])
-        margin = 100
-        left_lane_inds = (
-        (nonzerox > (left_fit[0] * (nonzeroy ** 2) + left_fit[1] * nonzeroy + left_fit[2] - margin)) & (
-        nonzerox < (left_fit[0] * (nonzeroy ** 2) + left_fit[1] * nonzeroy + left_fit[2] + margin)))
-        right_lane_inds = (
-        (nonzerox > (right_fit[0] * (nonzeroy ** 2) + right_fit[1] * nonzeroy + right_fit[2] - margin)) & (
-        nonzerox < (right_fit[0] * (nonzeroy ** 2) + right_fit[1] * nonzeroy + right_fit[2] + margin)))
-        # Again, extract left and right line pixel positions
-        num_cen = len(left_lane_inds)
-        leftx = nonzerox[left_lane_inds]
-        lefty = nonzeroy[left_lane_inds]
-        rightx = nonzerox[right_lane_inds]
-        righty = nonzeroy[right_lane_inds]
+
+    window_centroids = pi.find_window_centroids(binary_warped, window_width, window_height, margin)
+
+    # Extract left and right line pixel positions
+    num_cen = len(window_centroids)
+    lefty = [window_height * (n) for n in np.arange(num_cen, 0, -1)]
+    leftx = [x[0] for x in window_centroids]
+    rightx = [x[1] for x in window_centroids]
+    righty = lefty
 
     # Fit a second order polynomial to each
     left_fit = np.polyfit(lefty, leftx, 2)
@@ -97,11 +81,6 @@ def process_video(img):
     right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
         2 * right_fit_cr[0])
     # Now our radius of curvature is in meters
-
-    # Check if found line makes sense
-    #if left_curverad
-    #left_lane.radius_of_curvature = left_curverad
-
 
     # Warp the blank back to original image space using inverse perspective matrix (Minv)
     newwarp = cv2.warpPerspective(color_warp, Minv, (img.shape[1], img.shape[0]))
