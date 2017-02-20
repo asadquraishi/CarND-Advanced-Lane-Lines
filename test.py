@@ -1,67 +1,50 @@
 import numpy as np
-import cv2
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+# Generate some fake data to represent lane-line pixels
+ploty = np.linspace(0, 719, num=720)# to cover same y-range as image
+quadratic_coeff = 3e-4 # arbitrary quadratic coefficient
+# For each y position generate random x position within +/-50 pix
+# of the line base position in each case (x=200 for left, and x=900 for right)
+leftx = np.array([200 + (y**2)*quadratic_coeff + np.random.randint(-50, high=51)
+                              for y in ploty])
+rightx = np.array([900 + (y**2)*quadratic_coeff + np.random.randint(-50, high=51)
+                                for y in ploty])
 
-image = mpimg.imread('test_images/test4.jpg')
-
-
-# Edit this function to create your own pipeline.
-def pipeline(img, s_thresh=(100, 255), sx_thresh=(12, 255), sy_thresh=(25, 255), v_thresh=(50, 255)):
-    img = np.copy(img)
-    # Convert to HSV color space and separate the V channel
-    hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS).astype(np.float)
-    hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV).astype(np.float)
-    l_channel = hls[:, :, 1]
-    s_channel = hls[:, :, 2]
-    v_channel = hsv[:, :, 2]
-    # Sobel x
-    sobelx = cv2.Sobel(l_channel, cv2.CV_64F, 1, 0)  # Take the derivative in x
-    abs_sobelx = np.absolute(sobelx)  # Absolute x derivative to accentuate lines away from horizontal
-    scaled_sobelx = np.uint8(255 * abs_sobelx / np.max(abs_sobelx))
-    # Sobel y
-    sobely = cv2.Sobel(l_channel, cv2.CV_64F, 1, 0)  # Take the derivative in x
-    abs_sobely = np.absolute(sobely)  # Absolute x derivative to accentuate lines away from horizontal
-    scaled_sobely = np.uint8(255 * abs_sobely / np.max(abs_sobely))
-
-    # Threshold x gradient
-    sxbinary = np.zeros_like(scaled_sobelx)
-    sxbinary[(scaled_sobelx >= sx_thresh[0]) & (scaled_sobelx <= sx_thresh[1])] = 1
-
-    # Threshold y gradient
-    sybinary = np.zeros_like(scaled_sobely)
-    sybinary[(scaled_sobely >= sy_thresh[0]) & (scaled_sobely <= sy_thresh[1])] = 1
-
-    # Threshold S channel
-    s_binary = np.zeros_like(s_channel)
-    s_binary[(s_channel >= s_thresh[0]) & (s_channel <= s_thresh[1])] = 1
-
-    # Threshold V channel
-    v_binary = np.zeros_like(v_channel)
-    v_binary[(v_channel >= v_thresh[0]) & (v_channel <= v_thresh[1])] = 1
-
-    # Stack each channel
-    # Note color_binary[:, :, 0] is all 0s, effectively an all black image. It might
-    # be beneficial to replace this channel with something else.
-    # color_binary = np.dstack(( np.zeros_like(sxbinary), sxbinary, v_binary))
-    c_binary = np.zeros_like(v_channel)
-    c_binary[(s_binary == 1) & (v_binary == 1)] = 1
-    color_binary = np.zeros_like(img[:, :, 0])
-    color_binary[((sxbinary == 1) & (sybinary == 1)) | (c_binary == 1)] = 1
-    return color_binary
+leftx = leftx[::-1]  # Reverse to match top-to-bottom in y
+#print(leftx)
+rightx = rightx[::-1]  # Reverse to match top-to-bottom in y
 
 
-result = pipeline(image)
+# Fit a second order polynomial to pixel positions in each fake lane line
+left_fit = np.polyfit(ploty, leftx, 2)
+left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
+right_fit = np.polyfit(ploty, rightx, 2)
+right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
 
-# Plot the result
-f, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 9))
-f.tight_layout()
+# Plot up the fake data
+mark_size = 3
+plt.plot(leftx, ploty, 'o', color='red', markersize=mark_size)
+plt.plot(rightx, ploty, 'o', color='blue', markersize=mark_size)
+plt.xlim(0, 1280)
+plt.ylim(0, 720)
+plt.plot(left_fitx, ploty, color='green', linewidth=3)
+plt.plot(right_fitx, ploty, color='green', linewidth=3)
+plt.gca().invert_yaxis() # to visualize as we do the images
 
-ax1.imshow(image)
-ax1.set_title('Original Image', fontsize=40)
+# Define conversions in x and y from pixels space to meters
+ym_per_pix = 30/720 # meters per pixel in y dimension
+xm_per_pix = 3.7/700 # meters per pixel in x dimension
 
-ax2.imshow(result, cmap = 'binary_r')
-ax2.set_title('Pipeline Result', fontsize=40)
-plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
+# Fit new polynomials to x,y in world space
+y_eval = np.max(ploty)
+print(type(ploty))
+print(type(leftx))
+left_fit_cr = np.polyfit(ploty*ym_per_pix, leftx*xm_per_pix, 2)
+right_fit_cr = np.polyfit(ploty*ym_per_pix, rightx*xm_per_pix, 2)
+# Calculate the new radii of curvature
+left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
+right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
+# Now our radius of curvature is in meters
+print(left_curverad, 'm', right_curverad, 'm')
 
 plt.show()
