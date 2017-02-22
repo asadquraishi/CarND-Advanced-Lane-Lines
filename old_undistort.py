@@ -41,7 +41,7 @@ def corners_unwarp(img, nx, ny, mtx, dist):
     else:
         warped = np.zeros_like(img)
         M = 0
-        print("Cannot warp the {} image".format())
+        #print("Cannot warp the {} image".format())
     return warped, M
 
 

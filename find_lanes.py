@@ -15,14 +15,15 @@ margin = 40 # How much to slide left and right for searching
 # Define conversions in x and y from pixels space to meters
 ym_per_pix = 3 / 81  # meters per pixel in y dimension
 xm_per_pix = 3.7 / 648  # meters per pixel in x dimension
-tolerance = 0.2
+tolerance = 0.12 # Look at differences in curvature
+average_window = 5 # length of history
 
 dist_pickle = pickle.load(open("camera_cal/dist_pickle.p", "rb"))
 mtx = dist_pickle["mtx"]
 dist = dist_pickle["dist"]
 left_lane = pi.Line()
 right_lane = pi.Line()
-begun = False
+begun = False # First frame is treated differently
 detected = False
 
 def process_video(img):
@@ -61,38 +62,56 @@ def process_video(img):
         2 * right_fit_cr[0])
     # Now our radius of curvature is in meters
 
+    # Generate x and y values for plotting
+    left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+    right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
+
     # Compare the data with previous
     if begun:
+        # Check if left lane line is recognized
         if abs(left_lane.radius_of_curvature / left_curverad - 1) > tolerance:
             left_curverad = left_lane.radius_of_curvature
             detected = False
         else:
             left_lane.radius_of_curvature = left_curverad
             detected = True
+
+            # set left x points and average
+            if len(left_lane.recent_xfitted) > average_window:
+                left_lane.recent_xfitted.pop(0)
+            left_lane.recent_xfitted.append(left_fitx)
+            left_lane.bestx = np.mean(np.asarray(left_lane.recent_xfitted), axis=0).tolist()
+            left_lane.current_fit = left_fit
+
+        # Check if right lane line is recognized
         if abs(right_lane.radius_of_curvature / right_curverad -1) > tolerance:
             right_curverad = right_lane.radius_of_curvature
             detected = False
         else:
             right_lane.radius_of_curvature = right_curverad
             detected = True
-        if detected:
-            left_lane.current_fit = left_fit
+
+            # set right x points and average
+            if len(right_lane.recent_xfitted) > average_window:
+                right_lane.recent_xfitted.pop(0)
+            right_lane.recent_xfitted.append(right_fitx)
+            right_lane.bestx = np.mean(np.asarray(right_lane.recent_xfitted), axis=0).tolist()
             right_lane.current_fit = right_fit
-        else:
-            left_fit = left_lane.current_fit
-            right_fit = right_lane.current_fit
+
+        left_fitx = left_lane.bestx
+        right_fitx = right_lane.bestx
     else:
+        # Treat the first frame
         left_lane.radius_of_curvature = left_curverad
         right_lane.radius_of_curvature = right_curverad
         left_lane.current_fit = left_fit
         right_lane.current_fit = right_fit
+        left_lane.recent_xfitted.append(left_fitx)
+        right_lane.recent_xfitted.append(right_fitx)
+        left_lane.bestx = left_fitx
+        right_lane.bestx = right_fitx
         detected = True
         begun = True
-
-
-    # Generate x and y values for plotting
-    left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
-    right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
 
     # Create an image to draw the lines on
     warp_zero = np.zeros_like(binary_warped).astype(np.uint8)
@@ -106,8 +125,6 @@ def process_video(img):
     # Draw the lane onto the warped blank image
     cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
 
-
-
     # calculate centre and offset
     lane_centre = left_fitx[binary_warped.shape[0] - 1] + (right_fitx[binary_warped.shape[0] - 1] - left_fitx[
         binary_warped.shape[0] - 1]) / 2
@@ -118,8 +135,6 @@ def process_video(img):
         position = 'right of'
     elif dist_from_centre == 0:
         position = 'and on'
-
-
 
     # Warp the blank back to original image space using inverse perspective matrix (Minv)
     newwarp = cv2.warpPerspective(color_warp, Minv, (img.shape[1], img.shape[0]))

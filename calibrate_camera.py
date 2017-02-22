@@ -6,10 +6,9 @@ matplotlib.use('qt5agg')
 import matplotlib.pyplot as plt
 import pickle
 
-# prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
-# prepare object points
 nx = 9 # the number of inside corners in x
 ny = 6 # the number of inside corners in y
+# prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
 objp = np.zeros((ny*nx,3), np.float32)
 objp[:,:2] = np.mgrid[0:nx, 0:ny].T.reshape(-1,2)
 
@@ -35,15 +34,13 @@ for idx, fname in enumerate(images):
 
         # Draw and display the corners
         cv2.drawChessboardCorners(img, (ny,nx), corners, ret)
-        #write_name = 'corners_found'+str(idx)+'.jpg'
-        #cv2.imwrite(write_name, img)
         cv2.imshow('img', img)
-        cv2.waitKey(500)
+        #cv2.waitKey(100)
 
 cv2.destroyAllWindows()
 
 # Test undistortion on an image
-img = cv2.imread('camera_cal/calibration10.jpg')
+img = cv2.imread('camera_cal/calibration2.jpg')
 img_size = (img.shape[1], img.shape[0])
 
 # Do camera calibration given object points and image points
@@ -51,14 +48,13 @@ ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_siz
 
 
 dst = cv2.undistort(img, mtx, dist, None, mtx)
-cv2.imwrite('camera_cal/calibration10_undist.jpg',dst)
+cv2.imwrite('camera_cal/calibration2_undist.jpg',dst)
 
 # Save the camera calibration result for later use (we won't worry about rvecs / tvecs)
 dist_pickle = {}
 dist_pickle["mtx"] = mtx
 dist_pickle["dist"] = dist
 pickle.dump( dist_pickle, open("camera_cal/dist_pickle.p", "wb" ) )
-#dst = cv2.cvtColor(dst, cv2.COLOR_BGR2RGB)
 # Visualize undistortion
 f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
 ax1.imshow(img)
